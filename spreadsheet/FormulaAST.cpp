@@ -9,9 +9,38 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <string>
+
+using std::string;
+
+FormulaError::FormulaError(Category category) 
+    : category_(category) {}
+
+FormulaError::Category FormulaError::GetCategory() const {
+    return category_;
+}
+
+bool FormulaError::operator==(FormulaError rhs) const {
+    return category_ == rhs.category_;
+}
+
+std::string_view FormulaError::ToString() const {
+    switch (category_) {
+        case Category::Ref:
+            return "#REF!";
+        case Category::Value:
+            return "#VALUE!";
+        case Category::Arithmetic:
+            return "#ARITHM!";
+        }
+    return "";
+}
+
+std::ostream& operator<<(std::ostream& output, FormulaError fe) {
+    return output << fe.ToString();
+}
 
 namespace ASTImpl {
-
 enum ExprPrecedence {
     EP_ADD,
     EP_SUB,
@@ -67,12 +96,45 @@ constexpr PrecedenceRule PRECEDENCE_RULES[EP_END][EP_END] = {
     /* EP_ATOM */ {PR_NONE, PR_NONE, PR_NONE, PR_NONE, PR_NONE, PR_NONE},
 };
 
+ArgCell::ArgCell(const SheetInterface & sheet) : sheet_(sheet) {
+}
+
+double ASTImpl::ArgCell::operator()(Position pos) const {
+    if (!pos.IsValid()) {
+        throw FormulaError(FormulaError::Category::Ref);
+    }
+        
+    const CellInterface* cell = sheet_.GetCell(pos);
+
+    if(!cell || cell->GetText() == "") {
+        return 0;
+    }
+    
+    if(std::holds_alternative<double>(cell->GetValue())) {
+        return std::get<double>(cell->GetValue());
+    }
+
+    if(std::holds_alternative<std::string>(cell->GetValue())) {
+        auto value = std::get<std::string>(cell->GetValue());
+            double result = 0;
+            if (!value.empty()) {
+                std::istringstream in(value);
+                if (!(in >> result) || !in.eof()) {
+                    throw FormulaError(FormulaError::Category::Value);
+                }
+            }
+            return result;
+    }
+
+    throw FormulaError(std::get<FormulaError>(cell->GetValue()));
+}
+
 class Expr {
 public:
     virtual ~Expr() = default;
     virtual void Print(std::ostream& out) const = 0;
     virtual void DoPrintFormula(std::ostream& out, ExprPrecedence precedence) const = 0;
-    virtual double Evaluate(/*добавьте сюда нужные аргументы*/ args) const = 0;
+    virtual double Evaluate(const ArgCell& args) const = 0;
 
     // higher is tighter
     virtual ExprPrecedence GetPrecedence() const = 0;
@@ -142,8 +204,27 @@ public:
         }
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/) const override {
-			// Скопируйте ваше решение из предыдущих уроков.
+    double Evaluate(const ArgCell& args) const override {
+        double result = 0.0;
+        switch (type_) {
+            case Add:
+                result = lhs_->Evaluate(args) + rhs_->Evaluate(args);
+                break;
+            case Subtract:
+                result = lhs_->Evaluate(args) - rhs_->Evaluate(args);
+                break;
+            case Multiply:
+                result = lhs_->Evaluate(args) * rhs_->Evaluate(args);
+                break;
+            case Divide:
+                result = lhs_->Evaluate(args) / rhs_->Evaluate(args);
+                break;
+            }
+        if (!std::isfinite(result)){
+            throw FormulaError{ FormulaError::Category::Arithmetic};
+        }
+
+        return result;
     }
 
 private:
@@ -180,8 +261,12 @@ public:
         return EP_UNARY;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
-        // Скопируйте ваше решение из предыдущих уроков.
+    double Evaluate(const ArgCell& args) const override {
+        if(type_ == UnaryMinus) {
+            return -(operand_->Evaluate(args));
+        } else {
+            return operand_->Evaluate(args);
+        }
     }
 
 private:
@@ -211,8 +296,8 @@ public:
         return EP_ATOM;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
-        // реализуйте метод.
+    double Evaluate(const ArgCell& args) const override {
+        return args(*cell_);
     }
 
 private:
@@ -237,7 +322,7 @@ public:
         return EP_ATOM;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
+    double Evaluate(const ArgCell& args) const override {
         return value_;
     }
 
@@ -344,8 +429,7 @@ public:
         throw ParsingError("Error when lexing: " + msg);
     }
 };
-
-}  // namespace
+} // namespace
 }  // namespace ASTImpl
 
 FormulaAST ParseFormulaAST(std::istream& in) {
@@ -391,14 +475,17 @@ void FormulaAST::PrintFormula(std::ostream& out) const {
     root_expr_->PrintFormula(out, ASTImpl::EP_ATOM);
 }
 
-double FormulaAST::Execute(/*добавьте нужные аргументы*/ args) const {
-    return root_expr_->Evaluate(/*добавьте нужные аргументы*/ args);
+const std::forward_list<Position>& FormulaAST::GetReferencedCells() const {
+    return cells_;
+}
+
+double FormulaAST::Execute(const ASTImpl::ArgCell& args) const {
+    return root_expr_->Evaluate(args);
 }
 
 FormulaAST::FormulaAST(std::unique_ptr<ASTImpl::Expr> root_expr, std::forward_list<Position> cells)
     : root_expr_(std::move(root_expr))
     , cells_(std::move(cells)) {
-    cells_.sort();  // to avoid sorting in GetReferencedCells
 }
 
 FormulaAST::~FormulaAST() = default;
