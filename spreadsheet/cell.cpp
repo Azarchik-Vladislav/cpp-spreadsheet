@@ -8,6 +8,8 @@
 #include <queue>
 #include <unordered_set>
 
+using namespace std::literals;
+
 using std::make_unique;
 using std::string;
 
@@ -28,8 +30,8 @@ public:
     }
 
 protected:
-    Cell::Value value_ = "";
-    std::string text_ = "";
+    Cell::Value value_ = ""s;
+    std::string text_ = ""s;
 };
 
 class Cell::EmptyImpl final : public Impl {};
@@ -93,7 +95,7 @@ void Cell::Set(std::string text) {
         test_impl = make_unique<FormulaImpl>(std::move(text), sheet_);
         
         if(IsCircularDependency(*test_impl)) {
-            throw CircularDependencyException("");
+            throw CircularDependencyException(""s);
         }
         impl_ = std::move(test_impl);
     } else {
@@ -106,7 +108,7 @@ void Cell::Set(std::string text) {
 }
 
 void Cell::Clear() {
-    impl_ = std::make_unique<EmptyImpl>();
+    Set(""s);
 }
 
 Cell::Value Cell::GetValue() const {
@@ -134,7 +136,7 @@ bool Cell::IsCircularDependency(const Impl& new_impl) {
     for (const auto& pos : referenced_cells) {
         Cell* cell = sheet_.GetConcreteCell(pos);
         if(!cell) {
-            sheet_.SetCell(pos, "");
+            sheet_.SetCell(pos, ""s);
         }
         to_visit.push(sheet_.GetConcreteCell(pos));
     }
@@ -168,8 +170,7 @@ void Cell::ClearCellInfo() {
     referenced_cells_.clear();
 }
 
-void Cell::UpdateLinkedAndReferencedContainers()
-{
+void Cell::UpdateLinkedAndReferencedContainers() {
     const auto pos_ref_cells = GetReferencedCells();
 
     for(size_t i = 0; i < pos_ref_cells.size(); ++i) {

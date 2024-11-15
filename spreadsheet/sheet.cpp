@@ -13,9 +13,7 @@ using namespace std::literals;
 Sheet::~Sheet() {}
 
 void Sheet::SetCell(Position pos, std::string text) {
-    if(!pos.IsValid()) {
-        throw InvalidPositionException("Out of MAX or MIN positions");
-    }
+    ThrowIfNotValid(pos);
     
     const auto& cell = sheet_.find(pos);
     if (cell == sheet_.end()) {
@@ -30,9 +28,7 @@ void Sheet::SetCell(Position pos, std::string text) {
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
-    if(!pos.IsValid()) {
-        throw InvalidPositionException("Out of MAX or MIN positions");
-    }
+    ThrowIfNotValid(pos);
     
     const auto cell = sheet_.find(pos);
     if (cell == sheet_.end()) {
@@ -43,10 +39,8 @@ const CellInterface* Sheet::GetCell(Position pos) const {
 }
 
 CellInterface* Sheet::GetCell(Position pos) {
-    if(!pos.IsValid()) {
-        throw InvalidPositionException("Out of MAX or MIN positions");
-    }
-    
+    ThrowIfNotValid(pos);
+
     const auto cell = sheet_.find(pos);
     if (cell == sheet_.end()) {
         return nullptr;
@@ -64,10 +58,8 @@ Cell *Sheet::GetConcreteCell(Position pos) {
 }
 
 void Sheet::ClearCell(Position pos) {
-    if(!pos.IsValid()) {
-        throw InvalidPositionException("Out of MAX or MIN positions");
-    }
-    
+    ThrowIfNotValid(pos);
+
     if(!CheckCurrentPosition(pos)) {
         return;
     }
@@ -123,7 +115,14 @@ void Sheet::PrintTexts(std::ostream& output) const {
 }
 
 bool Sheet::CheckCurrentPosition(Position pos) const {
-    return sheet_.count(pos) && sheet_.at(pos).get() != nullptr && sheet_.at(pos)->GetText() != ""s;
+    const auto& cell = sheet_.find(pos);
+    return cell != sheet_.end() && cell->second != nullptr && cell->second->GetText() != ""s;
+}
+
+void Sheet::ThrowIfNotValid(Position pos) const {
+    if(!pos.IsValid()) {
+        throw InvalidPositionException("Out of MAX or MIN positions");
+    }
 }
 
 void Sheet::MinPrintArea::AddCountPositions(Position pos) {

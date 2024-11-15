@@ -54,4 +54,5 @@ private:
         
     //Возвращает true, когда позиция задана, не является nullptr и не пустая ячейка
     bool CheckCurrentPosition(Position pos) const;
+    void ThrowIfNotValid(Position pos) const;
 };
