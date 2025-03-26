@@ -1,15 +1,15 @@
 #include "FormulaAST.h"
 
-#include "FormulaBaseListener.h"
-#include "FormulaLexer.h"
-#include "FormulaParser.h"
-
 #include <cassert>
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
+
+#include "FormulaBaseListener.h"
+#include "FormulaLexer.h"
+#include "FormulaParser.h"
 
 using std::string;
 

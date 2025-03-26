@@ -35,7 +35,6 @@ private:
     class FormulaImpl;
     std::unique_ptr<Impl> impl_;
     
-
     bool IsCircularDependency(const Impl& new_impl);
     void ClearCellInfo();
     void UpdateLinkedAndReferencedContainers();

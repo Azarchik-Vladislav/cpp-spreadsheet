@@ -1,16 +1,15 @@
-#include "sheet.h"
-
-#include "cell.h"
-#include "common.h"
-
 #include <algorithm>
 #include <functional>
 #include <iostream>
 #include <optional>
 
+#include "cell.h"
+#include "common.h"
+#include "sheet.h"
+
 using namespace std::literals;
 
-Sheet::~Sheet() {}
+Sheet::~Sheet() = default;
 
 void Sheet::SetCell(Position pos, std::string text) {
     ThrowIfNotValid(pos);
@@ -84,6 +83,7 @@ void Sheet::PrintValues(std::ostream& output) const {
             }
             
             Position pos{row, col};
+
             if(CheckCurrentPosition(pos)) {
                 auto temp_value = sheet_.at(pos)->GetValue();
                 std::visit([&output](auto&& arg) {output << arg; }, temp_value);
@@ -105,6 +105,7 @@ void Sheet::PrintTexts(std::ostream& output) const {
             }
             
             Position pos{row, col};
+
             if(CheckCurrentPosition(pos)) {
                 output << sheet_.at(pos)->GetText();
             }
@@ -145,6 +146,7 @@ Size Sheet::MinPrintArea::GetMinPrintArea() const {
     if(rows_with_data_per_index.empty() && cols_with_data_per_index.empty()) {
         return Size{0, 0};
     }
+
     return Size{rows_with_data_per_index.rbegin()->first + 1,
                 cols_with_data_per_index.rbegin()->first + 1};
 }

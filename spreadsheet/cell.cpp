@@ -1,12 +1,12 @@
-#include "cell.h"
-#include "sheet.h"
-
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <optional>
 #include <queue>
 #include <unordered_set>
+
+#include "cell.h"
+#include "sheet.h"
 
 using namespace std::literals;
 
@@ -17,17 +17,9 @@ class Cell::Impl {
 public:
     virtual ~Impl() = default;
 
-    virtual Cell::Value GetValue() const {
-        return value_; 
-    }
-
-    virtual std::string GetText() const {
-        return text_;
-    }
-    
-    virtual std::vector<Position> GetReferencedCells() const {
-        return {};
-    }
+    virtual Cell::Value GetValue() const;
+    virtual std::string GetText() const;
+    virtual std::vector<Position> GetReferencedCells() const;
 
 protected:
     Cell::Value value_ = ""s;
@@ -38,43 +30,18 @@ class Cell::EmptyImpl final : public Impl {};
 
 class Cell::TextImpl final : public Impl {
 public:
-    TextImpl(const std::string& text) {
-        text_ = text;
-        value_ = text[0] == ESCAPE_SIGN ? text.substr(1) : text;
-    }
+    TextImpl(const std::string& text);
 };
 
 class Cell::FormulaImpl : public Impl {
 public:
-    FormulaImpl(const std::string& formula, const SheetInterface& sheet) : sheet_(sheet) {
-        auto expr = formula.substr(1);
-        formula_ = ParseFormula(expr);
-        text_ = FORMULA_SIGN + formula_->GetExpression();
-    }
+    FormulaImpl(const std::string& formula, const SheetInterface& sheet);
+    
+    bool IsValidCache() const;
+    void InvalidateCache() const;
 
-    bool IsValidCache() const {
-        return cache_.has_value();
-    }
-
-    void InvalidateCache() const {
-        cache_.reset();
-    }
-
-    Cell::Value GetValue() const override {
-        if(!cache_) {
-            cache_ = formula_->Evaluate(sheet_);
-        }
-
-        if(std::holds_alternative<double>(cache_.value())) {
-            return std::get<double>(cache_.value());
-        }
-
-        return std::get<FormulaError>(cache_.value());
-    }
-
-    std::vector<Position> GetReferencedCells() const override {
-        return formula_->GetReferencedCells();
-    }
+    Cell::Value GetValue() const override;
+    std::vector<Position> GetReferencedCells() const override;
 private:
     const SheetInterface& sheet_;
     std::unique_ptr<FormulaInterface> formula_;
@@ -114,6 +81,7 @@ void Cell::Clear() {
 Cell::Value Cell::GetValue() const {
     return impl_->GetValue();
 }
+
 std::string Cell::GetText() const {
     return impl_->GetText();
 }
@@ -135,6 +103,7 @@ bool Cell::IsCircularDependency(const Impl& new_impl) {
     std::queue<const Cell*> to_visit;
     for (const auto& pos : referenced_cells) {
         Cell* cell = sheet_.GetConcreteCell(pos);
+
         if(!cell) {
             sheet_.SetCell(pos, ""s);
         }
@@ -183,6 +152,7 @@ void Cell::UpdateLinkedAndReferencedContainers() {
 
 void Cell::InvalidateCacheRecursive() {
     if(const FormulaImpl* formula = dynamic_cast<FormulaImpl*>(impl_.get())) {
+
         if(formula->IsValidCache()) {
             formula->InvalidateCache();
         }  
@@ -191,4 +161,57 @@ void Cell::InvalidateCacheRecursive() {
     for(const auto& linked_cell : linked_cells_) {
         linked_cell->InvalidateCacheRecursive();
     }
+}
+
+//_______Cell::Impl_______
+Cell::Value Cell::Impl::GetValue() const {
+    return value_; 
+}
+
+std::string Cell::Impl::GetText() const {
+    return text_;
+}
+
+std::vector<Position> Cell::Impl::GetReferencedCells() const {
+    return {};
+}
+
+//_______Cell::TextImpl_______
+Cell::TextImpl::TextImpl(const std::string& text) {
+    text_ = text;
+    value_ = text[0] == ESCAPE_SIGN ? text.substr(1) : text;
+}
+
+
+//_______Cell::FormulaImpl_______
+Cell::FormulaImpl::FormulaImpl(const std::string& formula, const SheetInterface& sheet) 
+    : sheet_(sheet) {
+
+    auto expr = formula.substr(1);
+    formula_ = ParseFormula(expr);
+    text_ = FORMULA_SIGN + formula_->GetExpression();
+}
+
+bool Cell::FormulaImpl::IsValidCache() const {
+    return cache_.has_value();
+}
+
+void Cell::FormulaImpl::InvalidateCache() const {
+    cache_.reset();
+}
+
+Cell::Value Cell::FormulaImpl::GetValue() const {
+    if(!cache_) {
+        cache_ = formula_->Evaluate(sheet_);
+    }
+
+    if(std::holds_alternative<double>(cache_.value())) {
+        return std::get<double>(cache_.value());
+    }
+
+    return std::get<FormulaError>(cache_.value());
+}
+
+std::vector<Position> Cell::FormulaImpl::GetReferencedCells() const {
+    return formula_->GetReferencedCells();
 }

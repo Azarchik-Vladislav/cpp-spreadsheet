@@ -1,11 +1,11 @@
 #pragma once
 
-#include "cell.h"
-#include "common.h"
-
 #include <functional>
 #include <map>
 #include <unordered_map>
+
+#include "cell.h"
+#include "common.h"
 
 class CellHasher {
 public:

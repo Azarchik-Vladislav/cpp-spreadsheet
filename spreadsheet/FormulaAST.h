@@ -1,12 +1,12 @@
 #pragma once
 
-#include "FormulaLexer.h"
-#include "common.h"
-
 #include <forward_list>
 #include <functional>
 #include <stdexcept>
 #include <string>
+
+#include "FormulaLexer.h"
+#include "common.h"
 
 namespace ASTImpl {
 class ArgCell {
@@ -23,8 +23,6 @@ class Expr;
 class ParsingError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
-
-
 
 class FormulaAST {
 public:

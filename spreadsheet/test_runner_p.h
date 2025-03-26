@@ -44,12 +44,14 @@ std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
   os << "{";
   bool first = true;
   for (const auto& x : s) {
+
     if (!first) {
       os << ", ";
     }
     first = false;
     os << x;
   }
+
   return os << "}";
 }
 
@@ -68,9 +70,11 @@ void AssertEqual(const T& t, const U& u, const std::string& hint = {}) {
   if (!(t == u)) {
     std::ostringstream os;
     os << "Assertion failed: " << t << " != " << u;
+
     if (!hint.empty()) {
       os << " hint: " << hint;
     }
+    
     throw std::runtime_error(os.str());
   }
 }

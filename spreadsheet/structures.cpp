@@ -1,8 +1,8 @@
-#include "common.h"
-
 #include <cctype>
 #include <sstream>
 #include <algorithm>
+
+#include "common.h"
 
 const int LETTERS = 26;
 const int MAX_POSITION_LENGTH = 17;
@@ -30,6 +30,7 @@ std::string Position::ToString() const {
     std::string result;
     result.reserve(MAX_POSITION_LENGTH);
     int c = col;
+
     while (c >= 0) {
         result.insert(result.begin(), 'A' + c % LETTERS);
         c = c / LETTERS - 1;
@@ -50,6 +51,7 @@ Position Position::FromString(std::string_view str) {
     if (letters.empty() || digits.empty()) {
         return Position::NONE;
     }
+
     if (letters.size() > MAX_POS_LETTER_COUNT) {
         return Position::NONE;
     }
@@ -60,6 +62,7 @@ Position Position::FromString(std::string_view str) {
 
     int row;
     std::istringstream row_in{std::string{digits}};
+    
     if (!(row_in >> row) || !row_in.eof()) {
         return Position::NONE;
     }
